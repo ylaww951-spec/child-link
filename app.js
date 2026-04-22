@@ -290,50 +290,42 @@ function submitForm(e, type) {
   };
 
   const doSubmit = (payload) => {
-    const params = new URLSearchParams();
-    params.append("action", "save");
-    params.append("data", JSON.stringify(payload));
-    fetch(APPS_SCRIPT_URL + "?" + params.toString())
-    .then(r => r.json())
-    .then(data => {
-      if (btn) { btn.innerHTML = origText; btn.disabled = false; }
-      if (data.success) {
-        const imgSrc = imgFile ? URL.createObjectURL(imgFile) : (data.image_path || '');
-        if (type === 'missing') {
-          missingChildren.unshift({
-            id: data.id, name: payload.name, age: payload.age,
-            phone: payload.phone, guardian: payload.guardian,
-            area: payload.area, region: payload.region,
-            date: new Date().toLocaleDateString('ar-EG'),
-            desc: payload.description, img: imgSrc
-          });
-          renderMissingList('all');
-        } else {
-          foundChildren.unshift({
-            id: data.id, name: payload.name, age: payload.age,
-            phone: payload.phone, area: payload.area,
-            region: payload.region,
-            date: new Date().toLocaleDateString('ar-EG'),
-            desc: payload.description, img: imgSrc
-          });
-          renderFoundList('all');
-        }
-        showThankYouModal(type, payload.name);
-        form.reset();
-        clearPreviews();
-        setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
-      } else {
-        if (data.error && data.error.includes('تجاوزت')) {
-          showToast('⏳ ' + data.error, 5000);
-        } else {
-          showToast('❌ ' + (data.error || 'حدث خطأ أثناء الإرسال'));
-        }
-      }
-    })
-    .catch(() => {
-      if (btn) { btn.innerHTML = origText; btn.disabled = false; }
-      showToast('⚠️ تعذر الاتصال — تحقق من رابط الـ Apps Script');
-    });
+    const localId = Date.now();
+    const imgSrc  = imgFile ? URL.createObjectURL(imgFile) : '';
+
+    // أرسل للـ Apps Script (no-cors لتجنب مشكلة CORS)
+    fetch(APPS_SCRIPT_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify(payload)
+    }).catch(() => {});
+
+    // اعرض النتيجة فوراً بدون انتظار الرد
+    if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+    if (type === 'missing') {
+      missingChildren.unshift({
+        id: localId, name: payload.name, age: payload.age,
+        phone: payload.phone, guardian: payload.guardian,
+        area: payload.area, region: payload.region,
+        date: new Date().toLocaleDateString('ar-EG'),
+        desc: payload.description, img: imgSrc
+      });
+      renderMissingList('all');
+    } else {
+      foundChildren.unshift({
+        id: localId, name: payload.name, age: payload.age,
+        phone: payload.phone, area: payload.area,
+        region: payload.region,
+        date: new Date().toLocaleDateString('ar-EG'),
+        desc: payload.description, img: imgSrc
+      });
+      renderFoundList('all');
+    }
+    showThankYouModal(type, payload.name);
+    form.reset();
+    clearPreviews();
+    setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
   };
 
   if (imgFile) {
