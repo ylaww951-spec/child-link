@@ -198,7 +198,7 @@ function previewPhoto(input, previewId) {
 //  🔗 ضع هنا رابط الـ Web App بعد نشر الـ Apps Script
 //  (راجع ملف دليل_الإعداد.md لمعرفة كيفية الحصول عليه)
 // ══════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrxp_cEc1agYzChC9jfDrAq-mPYlwAvRn7HBjC4-T9JyVQLJpFPOU8-mSzw2KxSxeLrA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCUuD_BO1h1t3j9vG8HtMcVWHyGnb6boXrqtg9fTg8_3ubogI1TSQx9S1hVhnncCF_KQ/exec';
 
 // ── تحويل صورة إلى Base64 ──
 function fileToBase64(file) {
@@ -293,15 +293,14 @@ function submitForm(e, type) {
     const localId = Date.now();
     const imgSrc  = imgFile ? URL.createObjectURL(imgFile) : '';
 
-    // أرسل للـ Apps Script (no-cors لتجنب مشكلة CORS)
-    fetch(APPS_SCRIPT_URL, {
-      method:  'POST',
-      mode:    'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body:    JSON.stringify(payload)
-    }).catch(() => {});
+    // إرسال البيانات عبر GET (الأضمن مع Apps Script)
+    const p = new URLSearchParams({ action: 'save' });
+    Object.keys(payload).forEach(k => {
+      if (k !== 'imageBase64') p.append(k, payload[k] || '');
+    });
+    fetch(APPS_SCRIPT_URL + '?' + p.toString()).catch(() => {});
 
-    // اعرض النتيجة فوراً بدون انتظار الرد
+    // اعرض النتيجة فوراً
     if (btn) { btn.innerHTML = origText; btn.disabled = false; }
     if (type === 'missing') {
       missingChildren.unshift({
