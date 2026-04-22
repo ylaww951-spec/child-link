@@ -198,7 +198,7 @@ function previewPhoto(input, previewId) {
 //  🔗 ضع هنا رابط الـ Web App بعد نشر الـ Apps Script
 //  (راجع ملف دليل_الإعداد.md لمعرفة كيفية الحصول عليه)
 // ══════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbylvjzA2fw2Ai-eq65bk99TdIe_avadptr-F_p5oyY3GxeQPbPOW-lJ4LA-Ng6BQkoaUA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJAklP6QzjTb93V-Obqe5QqpPtljQ2NMaSXRwSoRHHCBzLDuatbLV7SLe1R7bYTtnmIQ/exec';
 
 // ── تحويل صورة إلى Base64 ──
 function fileToBase64(file) {
@@ -293,33 +293,24 @@ function submitForm(e, type) {
     const localId = Date.now();
     const imgSrc  = imgFile ? URL.createObjectURL(imgFile) : '';
 
-    // إرسال البيانات عبر form POST (يتجاوز CORS تلقائياً)
-    try {
-      const iframe = document.getElementById('submit_iframe') || (() => {
-        const f = document.createElement('iframe');
-        f.id = 'submit_iframe';
-        f.name = 'submit_iframe';
-        f.style.display = 'none';
-        document.body.appendChild(f);
-        return f;
-      })();
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = APPS_SCRIPT_URL;
-      form.target = 'submit_iframe';
-      form.style.display = 'none';
-      Object.keys(payload).forEach(k => {
-        if (k === 'imageBase64') return;
-        const inp = document.createElement('input');
-        inp.type = 'hidden';
-        inp.name = k;
-        inp.value = payload[k] || '';
-        form.appendChild(inp);
-      });
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
-    } catch(err) { console.log('submit error', err); }
+    // إرسال عبر GET — الطريقة الوحيدة التي تعمل مع Apps Script بدون مشاكل
+    const params = new URLSearchParams();
+    params.set('action', 'save');
+    params.set('type',        payload.type        || '');
+    params.set('name',        payload.name        || '');
+    params.set('age',         payload.age         || '');
+    params.set('gender',      payload.gender      || '');
+    params.set('phone',       payload.phone       || '');
+    params.set('area',        payload.area        || '');
+    params.set('region',      payload.region      || '');
+    params.set('guardian',    payload.guardian    || '');
+    params.set('description', payload.description || '');
+    params.set('lost_at',     payload.lost_at     || '');
+    params.set('found_at',    payload.found_at    || '');
+    fetch(APPS_SCRIPT_URL + '?' + params.toString())
+      .then(r => r.json())
+      .then(d => console.log('Saved:', d))
+      .catch(e => console.log('Error:', e));
 
     // اعرض النتيجة فوراً
     if (btn) { btn.innerHTML = origText; btn.disabled = false; }
@@ -346,8 +337,6 @@ function submitForm(e, type) {
     form.reset();
     clearPreviews();
     setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
-  };
-
   if (imgFile) {
     fileToBase64(imgFile).then(b64 => doSubmit(makePayload(b64)));
   } else {
