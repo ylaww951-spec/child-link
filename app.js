@@ -198,7 +198,7 @@ function previewPhoto(input, previewId) {
 //  🔗 ضع هنا رابط الـ Web App بعد نشر الـ Apps Script
 //  (راجع ملف دليل_الإعداد.md لمعرفة كيفية الحصول عليه)
 // ══════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzS8HaiHqK3W9BuBNMuGqKQR4GxUWEOnFy7MZTiISKOzK9XOfN0xCmwikz8s9J1r-8NdA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbylvjzA2fw2Ai-eq65bk99TdIe_avadptr-F_p5oyY3GxeQPbPOW-lJ4LA-Ng6BQkoaUA/exec';
 
 // ── تحويل صورة إلى Base64 ──
 function fileToBase64(file) {
@@ -293,12 +293,33 @@ function submitForm(e, type) {
     const localId = Date.now();
     const imgSrc  = imgFile ? URL.createObjectURL(imgFile) : '';
 
-    // إرسال البيانات عبر GET (الأضمن مع Apps Script)
-    const p = new URLSearchParams({ action: 'save' });
-    Object.keys(payload).forEach(k => {
-      if (k !== 'imageBase64') p.append(k, payload[k] || '');
-    });
-    fetch(APPS_SCRIPT_URL + '?' + p.toString()).catch(() => {});
+    // إرسال البيانات عبر form POST (يتجاوز CORS تلقائياً)
+    try {
+      const iframe = document.getElementById('submit_iframe') || (() => {
+        const f = document.createElement('iframe');
+        f.id = 'submit_iframe';
+        f.name = 'submit_iframe';
+        f.style.display = 'none';
+        document.body.appendChild(f);
+        return f;
+      })();
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = APPS_SCRIPT_URL;
+      form.target = 'submit_iframe';
+      form.style.display = 'none';
+      Object.keys(payload).forEach(k => {
+        if (k === 'imageBase64') return;
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = k;
+        inp.value = payload[k] || '';
+        form.appendChild(inp);
+      });
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+    } catch(err) { console.log('submit error', err); }
 
     // اعرض النتيجة فوراً
     if (btn) { btn.innerHTML = origText; btn.disabled = false; }
