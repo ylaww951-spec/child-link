@@ -2196,43 +2196,42 @@ function previewPhoto(input, previewId) {
     reader.readAsDataURL(input.files[0]);
   }
 }
-// ── API base URL (غيرها لدومينك لما ترفع) ──
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://localhost:8080'
-  : '';
+// ── Google Apps Script URL ──
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJAklP6QzjTb93V-Obqe5QqpPtljQ2NMaSXRwSoRHHCBzLDuatbLV7SLe1R7bYTtnmIQ/exec';
 
-// ── Load reports from API on startup ──
+// ── Load reports from Google Sheets on startup ──
 async function loadReports() {
   try {
     const [misRes, foRes] = await Promise.all([
-      fetch(API_BASE + '/api/reports/missing'),
-      fetch(API_BASE + '/api/reports/found')
+      fetch(APPS_SCRIPT_URL + '?action=missing'),
+      fetch(APPS_SCRIPT_URL + '?action=found')
     ]);
     if (misRes.ok) {
       const data = await misRes.json();
-      if (data.success && data.data.length) {
-        missingChildren = data.data.map(r => ({
+      if (data.success && data.data && data.data.length) {
+        missingChildren.length = 0;
+        data.data.forEach(r => missingChildren.push({
           id: r.id, name: r.name, age: r.age, phone: r.phone,
           guardian: r.guardian || '—', area: r.area, region: r.region,
-          date: r.created_at, desc: r.description,
-          img: r.image_path ? API_BASE + '/' + r.image_path : ''
+          date: r.created_at, desc: r.description, img: ''
         }));
         renderMissingList('all');
       }
     }
     if (foRes.ok) {
       const data = await foRes.json();
-      if (data.success && data.data.length) {
-        foundChildren = data.data.map(r => ({
+      if (data.success && data.data && data.data.length) {
+        foundChildren.length = 0;
+        data.data.forEach(r => foundChildren.push({
           id: r.id, name: r.name, age: r.age, phone: r.phone,
           area: r.area, region: r.region,
-          date: r.created_at, desc: r.description,
-          img: r.image_path ? API_BASE + '/' + r.image_path : ''
+          date: r.created_at, desc: r.description, img: ''
         }));
         renderFoundList('all');
       }
     }
   } catch(e) {
+    console.log('loadReports error:', e);
   }
 }
 
@@ -2240,104 +2239,70 @@ function submitForm(e, type) {
   e.preventDefault();
   const form = e.target;
   const getVal = (id) => (document.getElementById(id)?.value || '').trim();
-
-  // Build FormData to send image + fields together
-  const fd = new FormData();
-  const imgFile = document.getElementById(type === 'missing' ? 'missingPhoto' : 'foundPhoto');
-  if (imgFile && imgFile.files[0]) fd.append('image', imgFile.files[0]);
-
-  if (type === 'missing') {
-    const areaEl = document.getElementById('mArea');
-    fd.append('name',        getVal('mName'));
-    fd.append('age',         getVal('mAge'));
-    fd.append('phone',       getVal('mPhone'));
-    fd.append('guardian',    getVal('mGuardian'));
-    fd.append('area',        areaEl?.options[areaEl.selectedIndex]?.text || '');
-    fd.append('region',      areaEl?.value || '');
-    fd.append('description', getVal('mDesc'));
-    fd.append('lost_at',     getVal('mDate'));
-  } else {
-    const areaEl = document.getElementById('fArea');
-    fd.append('name',        getVal('fName') || 'مجهول الهوية');
-    fd.append('age',         getVal('fAge'));
-    fd.append('phone',       getVal('fPhone'));
-    fd.append('area',        areaEl?.options[areaEl.selectedIndex]?.text || '');
-    fd.append('region',      areaEl?.value || '');
-    fd.append('description', getVal('fDesc'));
-    fd.append('found_at',    getVal('fDate'));
-  }
-
-  // Show loading
   const btn = form.querySelector('.form-submit');
   const origText = btn ? btn.innerHTML : '';
   if (btn) { btn.innerHTML = '⏳ جاري الإرسال...'; btn.disabled = true; }
 
-  const endpoint = type === 'missing' ? '/api/report/missing' : '/api/report/found';
+  const params = new URLSearchParams();
+  params.set('action', 'save');
+  params.set('type', type);
 
-  fetch(API_BASE + endpoint, { method: 'POST', body: fd })
+  if (type === 'missing') {
+    const areaEl = document.getElementById('mArea');
+    params.set('name',        getVal('mName'));
+    params.set('age',         getVal('mAge'));
+    params.set('phone',       getVal('mPhone'));
+    params.set('guardian',    getVal('mGuardian'));
+    params.set('area',        areaEl?.options[areaEl.selectedIndex]?.text || '');
+    params.set('region',      areaEl?.value || '');
+    params.set('description', getVal('mDesc'));
+    params.set('lost_at',     getVal('mDate'));
+  } else {
+    const areaEl = document.getElementById('fArea');
+    params.set('name',        getVal('fName') || 'مجهول الهوية');
+    params.set('age',         getVal('fAge'));
+    params.set('phone',       getVal('fPhone'));
+    params.set('area',        areaEl?.options[areaEl.selectedIndex]?.text || '');
+    params.set('region',      areaEl?.value || '');
+    params.set('description', getVal('fDesc'));
+    params.set('found_at',    getVal('fDate'));
+  }
+
+  const name = params.get('name');
+  const imgFile = document.getElementById(type === 'missing' ? 'missingPhoto' : 'foundPhoto');
+  const imgSrc  = imgFile && imgFile.files[0] ? URL.createObjectURL(imgFile.files[0]) : '';
+
+  fetch(APPS_SCRIPT_URL + '?' + params.toString())
     .then(r => r.json())
     .then(data => {
       if (btn) { btn.innerHTML = origText; btn.disabled = false; }
-      if (data.success) {
-        // Add to local array for instant display
-        const imgSrc = imgFile && imgFile.files[0] ? URL.createObjectURL(imgFile.files[0]) : '';
-        if (type === 'missing') {
-          missingChildren.unshift({
-            id: data.id, name: fd.get('name'), age: fd.get('age'),
-            phone: fd.get('phone'), guardian: fd.get('guardian'),
-            area: fd.get('area'), region: fd.get('region'),
-            date: new Date().toLocaleDateString('ar-EG'),
-            desc: fd.get('description'), img: imgSrc
-          });
-          renderMissingList('all');
-        } else {
-          foundChildren.unshift({
-            id: data.id, name: fd.get('name'), age: fd.get('age'),
-            phone: fd.get('phone'), area: fd.get('area'),
-            region: fd.get('region'),
-            date: new Date().toLocaleDateString('ar-EG'),
-            desc: fd.get('description'), img: imgSrc
-          });
-          renderFoundList('all');
-        }
-        showThankYouModal(type, fd.get('name'));
-        form.reset();
-        clearPreviews();
-        setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
-      } else {
-        if (data.error && data.error.includes('تجاوزت')) {
-        showToast('⏳ ' + data.error, 5000);
-      } else {
-        showToast('❌ ' + (data.error || 'حدث خطأ'));
-      }
-      }
-    })
-    .catch(() => {
-      if (btn) { btn.innerHTML = origText; btn.disabled = false; }
-      // Fallback: save locally if API not available
-      showToast('⚠️ تم الحفظ محلياً — سيُرسل عند الاتصال');
-      const imgSrc = imgFile && imgFile.files[0] ? URL.createObjectURL(imgFile.files[0]) : '';
       if (type === 'missing') {
         missingChildren.unshift({
-          id: Date.now(), name: fd.get('name'), age: fd.get('age'),
-          phone: fd.get('phone'), guardian: fd.get('guardian'),
-          area: fd.get('area'), region: fd.get('region'),
+          id: data.id || Date.now(), name: params.get('name'), age: params.get('age'),
+          phone: params.get('phone'), guardian: params.get('guardian'),
+          area: params.get('area'), region: params.get('region'),
           date: new Date().toLocaleDateString('ar-EG'),
-          desc: fd.get('description'), img: imgSrc
+          desc: params.get('description'), img: imgSrc
         });
         renderMissingList('all');
       } else {
         foundChildren.unshift({
-          id: Date.now(), name: fd.get('name'), age: fd.get('age'),
-          phone: fd.get('phone'), area: fd.get('area'), region: fd.get('region'),
+          id: data.id || Date.now(), name: params.get('name'), age: params.get('age'),
+          phone: params.get('phone'), area: params.get('area'),
+          region: params.get('region'),
           date: new Date().toLocaleDateString('ar-EG'),
-          desc: fd.get('description'), img: imgSrc
+          desc: params.get('description'), img: imgSrc
         });
         renderFoundList('all');
       }
-      showThankYouModal(type, fd.get('name'));
+      showThankYouModal(type, name);
       form.reset();
       clearPreviews();
+      setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
+    })
+    .catch(() => {
+      if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+      showToast('❌ حدث خطأ في الإرسال');
       setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
     });
 }
