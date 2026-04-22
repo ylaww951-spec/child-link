@@ -198,7 +198,7 @@ function previewPhoto(input, previewId) {
 //  🔗 ضع هنا رابط الـ Web App بعد نشر الـ Apps Script
 //  (راجع ملف دليل_الإعداد.md لمعرفة كيفية الحصول عليه)
 // ══════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2RdPc1NUM4YVfLd5qWcjkD6fZYUwwOO6yYsjA7ACq_tCIgBLSiYlQDnjuIQOm3HvPhw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrxp_cEc1agYzChC9jfDrAq-mPYlwAvRn7HBjC4-T9JyVQLJpFPOU8-mSzw2KxSxeLrA/exec';
 
 // ── تحويل صورة إلى Base64 ──
 function fileToBase64(file) {
@@ -290,10 +290,10 @@ function submitForm(e, type) {
   };
 
   const doSubmit = (payload) => {
-    fetch(APPS_SCRIPT_URL, {
-      method:  'POST',
-      body:    JSON.stringify(payload)
-    })
+    const params = new URLSearchParams();
+    params.append("action", "save");
+    params.append("data", JSON.stringify(payload));
+    fetch(APPS_SCRIPT_URL + "?" + params.toString())
     .then(r => r.json())
     .then(data => {
       if (btn) { btn.innerHTML = origText; btn.disabled = false; }
