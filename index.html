@@ -1493,7 +1493,7 @@ main.sidebar-open {
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">الجنس <span>*</span></label>
-            <select class="form-select" required>
+            <select class="form-select" id="mGender" required>
               <option value="">اختر...</option>
               <option value="male">ذكر</option>
               <option value="female">أنثى</option>
@@ -1501,22 +1501,22 @@ main.sidebar-open {
           </div>
           <div class="form-group">
             <label class="form-label">لون البشرة</label>
-            <select class="form-select">
+            <select class="form-select" id="mSkin">
               <option value="">اختر...</option>
-              <option>فاتح</option><option>قمحي</option><option>أسمر</option><option>داكن</option>
+              <option value="فاتح">فاتح</option><option value="قمحي">قمحي</option><option value="أسمر">أسمر</option><option value="داكن">داكن</option>
             </select>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">وصف الطفل (ملابس، علامات مميزة...)</label>
-          <textarea class="form-textarea" placeholder="اذكر أي تفاصيل تساعد في التعرف على الطفل..." maxlength="1000"></textarea>
+          <textarea class="form-textarea" id="mDesc" placeholder="اذكر أي تفاصيل تساعد في التعرف على الطفل..." maxlength="1000"></textarea>
         </div>
 
         <div class="form-section-title">📍 بيانات الاختفاء</div>
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">آخر مكان شوهد فيه <span>*</span></label>
-            <input type="text" class="form-input" placeholder="المنطقة / الشارع" required>
+            <input type="text" class="form-input" id="mLastSeen" placeholder="المنطقة / الشارع" required>
           </div>
           <div class="form-group">
             <label class="form-label">المنطقة بالجيزة <span>*</span></label>
@@ -1539,7 +1539,7 @@ main.sidebar-open {
         </div>
         <div class="form-group">
           <label class="form-label">تاريخ ووقت الاختفاء <span>*</span></label>
-          <input type="datetime-local" class="form-input" required>
+          <input type="datetime-local" class="form-input" id="mDate" required>
         </div>
 
         <div class="form-section-title">📸 صورة الطفل</div>
@@ -1568,7 +1568,7 @@ main.sidebar-open {
         </div>
         <div class="form-group">
           <label class="form-label">البريد الإلكتروني</label>
-          <input type="email" class="form-input" placeholder="example@email.com">
+          <input type="email" class="form-input" id="mEmail" placeholder="example@email.com">
         </div>
 
         <input type="hidden" name="_token" value="csrf_<?= bin2hex(random_bytes(16)); ?>">
@@ -1622,28 +1622,28 @@ main.sidebar-open {
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">الجنس <span>*</span></label>
-            <select class="form-select" required>
+            <select class="form-select" id="fGender" required>
               <option value="">اختر...</option>
-              <option>ذكر</option><option>أنثى</option><option>غير محدد</option>
+              <option value="male">ذكر</option><option value="female">أنثى</option><option value="unknown">غير محدد</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">الحالة الصحية</label>
-            <select class="form-select">
-              <option>جيدة</option><option>بحاجة لعناية طبية</option><option>حالة طوارئ</option>
+            <select class="form-select" id="fHealth">
+              <option value="جيدة">جيدة</option><option value="بحاجة لعناية طبية">بحاجة لعناية طبية</option><option value="حالة طوارئ">حالة طوارئ</option>
             </select>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">وصف الطفل (ملابس، علامات مميزة...) <span>*</span></label>
-          <textarea class="form-textarea" placeholder="صف الطفل بدقة للمساعدة في التعرف عليه..." required maxlength="1000"></textarea>
+          <textarea class="form-textarea" id="fDesc" placeholder="صف الطفل بدقة للمساعدة في التعرف عليه..." required maxlength="1000"></textarea>
         </div>
 
         <div class="form-section-title">📍 بيانات العثور</div>
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">المكان الذي تم العثور فيه <span>*</span></label>
-            <input type="text" class="form-input" placeholder="المنطقة / الشارع" required>
+            <input type="text" class="form-input" id="fLocation" placeholder="المنطقة / الشارع" required>
           </div>
           <div class="form-group">
             <label class="form-label">المنطقة بالجيزة <span>*</span></label>
@@ -1666,7 +1666,7 @@ main.sidebar-open {
         </div>
         <div class="form-group">
           <label class="form-label">تاريخ ووقت العثور <span>*</span></label>
-          <input type="datetime-local" class="form-input" required>
+          <input type="datetime-local" class="form-input" id="fDate" required>
         </div>
 
         <div class="form-section-title">📸 صورة الطفل</div>
@@ -1683,7 +1683,7 @@ main.sidebar-open {
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">اسمك <span>*</span></label>
-            <input type="text" class="form-input" placeholder="اسمك الكامل" required>
+            <input type="text" class="form-input" id="fReporter" placeholder="اسمك الكامل" required>
           </div>
           <div class="form-group">
             <label class="form-label">رقم هاتفك <span>*</span></label>
@@ -1692,11 +1692,11 @@ main.sidebar-open {
         </div>
         <div class="form-group">
           <label class="form-label">هل الطفل معك الآن؟</label>
-          <select class="form-select">
-            <option>نعم، الطفل بأمان معي</option>
-            <option>تم تسليمه للشرطة</option>
-            <option>تم تسليمه للإسعاف</option>
-            <option>لا أزال في مكان العثور عليه</option>
+          <select class="form-select" id="fChildWith">
+            <option value="نعم، الطفل بأمان معي">نعم، الطفل بأمان معي</option>
+            <option value="تم تسليمه للشرطة">تم تسليمه للشرطة</option>
+            <option value="تم تسليمه للإسعاف">تم تسليمه للإسعاف</option>
+            <option value="لا أزال في مكان العثور عليه">لا أزال في مكان العثور عليه</option>
           </select>
         </div>
         <button type="submit" class="form-submit" style="background:linear-gradient(135deg,var(--g3),var(--g5))">
@@ -2197,7 +2197,7 @@ function previewPhoto(input, previewId) {
   }
 }
 // ── Google Apps Script URL ──
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJAklP6QzjTb93V-Obqe5QqpPtljQ2NMaSXRwSoRHHCBzLDuatbLV7SLe1R7bYTtnmIQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjeQanuQFATQQU0xkk63e6ng7gtZGJMXT80Gv2qH7Jh2pGkUvcaoIbUUfhJZJ0nMGcOA/exec';
 
 // ── Load reports from Google Sheets on startup ──
 async function loadReports() {
@@ -2249,23 +2249,37 @@ function submitForm(e, type) {
 
   if (type === 'missing') {
     const areaEl = document.getElementById('mArea');
+    const genderElM = document.getElementById('mGender');
+    const skinElM    = document.getElementById('mSkin');
     params.set('name',        getVal('mName'));
     params.set('age',         getVal('mAge'));
-    params.set('phone',       getVal('mPhone'));
-    params.set('guardian',    getVal('mGuardian'));
+    params.set('gender',      genderElM?.value || '');
+    params.set('skin',        skinElM?.value || '');
+    params.set('description', getVal('mDesc'));
+    params.set('last_seen',   getVal('mLastSeen'));
     params.set('area',        areaEl?.options[areaEl.selectedIndex]?.text || '');
     params.set('region',      areaEl?.value || '');
-    params.set('description', getVal('mDesc'));
     params.set('lost_at',     getVal('mDate'));
+    params.set('guardian',    getVal('mGuardian'));
+    params.set('phone',       getVal('mPhone'));
+    params.set('email',       getVal('mEmail'));
   } else {
     const areaEl = document.getElementById('fArea');
-    params.set('name',        getVal('fName') || 'مجهول الهوية');
-    params.set('age',         getVal('fAge'));
-    params.set('phone',       getVal('fPhone'));
-    params.set('area',        areaEl?.options[areaEl.selectedIndex]?.text || '');
-    params.set('region',      areaEl?.value || '');
-    params.set('description', getVal('fDesc'));
-    params.set('found_at',    getVal('fDate'));
+    const genderElF  = document.getElementById('fGender');
+    const healthElF  = document.getElementById('fHealth');
+    const childWithF = document.getElementById('fChildWith');
+    params.set('name',           getVal('fName') || 'مجهول الهوية');
+    params.set('age',            getVal('fAge'));
+    params.set('gender',         genderElF?.value || '');
+    params.set('health',         healthElF?.value || '');
+    params.set('description',    getVal('fDesc'));
+    params.set('found_location', getVal('fLocation'));
+    params.set('area',           areaEl?.options[areaEl.selectedIndex]?.text || '');
+    params.set('region',         areaEl?.value || '');
+    params.set('found_at',       getVal('fDate'));
+    params.set('reporter',       getVal('fReporter'));
+    params.set('phone',          getVal('fPhone'));
+    params.set('child_with',     childWithF?.value || '');
   }
 
   const name = params.get('name');
