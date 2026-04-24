@@ -198,7 +198,7 @@ function previewPhoto(input, previewId) {
 //  🔗 ضع هنا رابط الـ Web App بعد نشر الـ Apps Script
 //  (راجع ملف دليل_الإعداد.md لمعرفة كيفية الحصول عليه)
 // ══════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLKCKolGAqQOINWyVIPq0c_rEKpDjZQ9a-GSEBkAl2lDt7_pTCB6D4ddUSpEmvL1kkFQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwEWA0nQIG-EkKjR3o51G1duYCf6UFPQo5_-QTrqFLVi_YAz2Jl8tDoqz6ut1NOPtd6/exec';
 
 // ── تحويل صورة إلى Base64 ──
 function fileToBase64(file) {
@@ -210,38 +210,80 @@ function fileToBase64(file) {
   });
 }
 
+// ── JSONP helper لحل مشكلة CORS مع Google Apps Script ──
+function fetchViaJsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timer  = setTimeout(() => {
+      cleanup();
+      reject(new Error('timeout'));
+    }, 10000);
+
+    window[cbName] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    script.onerror = () => { cleanup(); reject(new Error('script error')); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+    document.head.appendChild(script);
+  });
+}
+
 // ── جلب البلاغات من Google Sheets عند فتح الموقع ──
 async function loadReports() {
   try {
-    const [misRes, foRes] = await Promise.all([
-      fetch(APPS_SCRIPT_URL + '?action=missing'),
-      fetch(APPS_SCRIPT_URL + '?action=found')
+    // نجرب fetch العادي الأول
+    const tryFetch = async (action) => {
+      try {
+        const res = await fetch(APPS_SCRIPT_URL + '?action=' + action, {
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (res.ok) return await res.json();
+      } catch(e) {
+        // لو fetch فشل بسبب CORS → نجرب JSONP
+        try {
+          return await fetchViaJsonp(APPS_SCRIPT_URL + '?action=' + action);
+        } catch(e2) {
+          console.log('تعذر جلب ' + action + ':', e2.message);
+          return null;
+        }
+      }
+    };
+
+    const [misData, foData] = await Promise.all([
+      tryFetch('missing'),
+      tryFetch('found')
     ]);
-    if (misRes.ok) {
-      const data = await misRes.json();
-      if (data.success && data.data && data.data.length) {
-        missingChildren.length = 0;
-        data.data.forEach(r => missingChildren.push({
-          id: r.id, name: r.name, age: r.age, phone: r.phone,
-          guardian: r.guardian || '—', area: r.area, region: r.region,
-          date: r.created_at, desc: r.description,
-          img: r.image_path || ''
-        }));
-        renderMissingList('all');
-      }
+
+    if (misData && misData.success && misData.data && misData.data.length) {
+      missingChildren.length = 0;
+      misData.data.forEach(r => missingChildren.push({
+        id: r.id, name: r.name, age: r.age, phone: r.phone,
+        guardian: r.guardian || '—', area: r.area, region: r.region,
+        date: r.created_at, desc: r.description,
+        img: r.image_path || ''
+      }));
+      renderMissingList('all');
     }
-    if (foRes.ok) {
-      const data = await foRes.json();
-      if (data.success && data.data && data.data.length) {
-        foundChildren.length = 0;
-        data.data.forEach(r => foundChildren.push({
-          id: r.id, name: r.name, age: r.age, phone: r.phone,
-          area: r.area, region: r.region,
-          date: r.created_at, desc: r.description,
-          img: r.image_path || ''
-        }));
-        renderFoundList('all');
-      }
+
+    if (foData && foData.success && foData.data && foData.data.length) {
+      foundChildren.length = 0;
+      foData.data.forEach(r => foundChildren.push({
+        id: r.id, name: r.name, age: r.age, phone: r.phone,
+        area: r.area, region: r.region,
+        date: r.created_at, desc: r.description,
+        img: r.image_path || ''
+      }));
+      renderFoundList('all');
     }
   } catch(e) {
     console.log('تعذر الاتصال بـ Google Sheets:', e);
@@ -307,10 +349,10 @@ function submitForm(e, type) {
     params.set('description', payload.description || '');
     params.set('lost_at',     payload.lost_at     || '');
     params.set('found_at',    payload.found_at    || '');
-    fetch(APPS_SCRIPT_URL + '?' + params.toString())
+    fetch(APPS_SCRIPT_URL + '?' + params.toString(), { mode: 'cors' })
       .then(r => r.json())
       .then(d => console.log('Saved:', d))
-      .catch(e => console.log('Error:', e));
+      .catch(() => { fetch(APPS_SCRIPT_URL + '?' + params.toString(), { mode: 'no-cors' }).catch(e => console.log('no-cors err:', e)); });
 
     // اعرض النتيجة فوراً
     if (btn) { btn.innerHTML = origText; btn.disabled = false; }
