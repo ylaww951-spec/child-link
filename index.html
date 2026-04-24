@@ -2286,7 +2286,10 @@ function submitForm(e, type) {
   const imgFile = document.getElementById(type === 'missing' ? 'missingPhoto' : 'foundPhoto');
   const imgSrc  = imgFile && imgFile.files[0] ? URL.createObjectURL(imgFile.files[0]) : '';
 
-  fetch(APPS_SCRIPT_URL + '?' + params.toString())
+  // تحويل الصورة لـ base64 وإرسالها
+  const sendRequest = (imageBase64) => {
+    if (imageBase64) params.set('imageBase64', imageBase64);
+    fetch(APPS_SCRIPT_URL + '?' + params.toString())
     .then(r => r.json())
     .then(data => {
       if (btn) { btn.innerHTML = origText; btn.disabled = false; }
@@ -2319,6 +2322,15 @@ function submitForm(e, type) {
       showToast('❌ حدث خطأ في الإرسال');
       setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
     });
+  };
+
+  if (imgFile && imgFile.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => sendRequest(e.target.result);
+    reader.readAsDataURL(imgFile.files[0]);
+  } else {
+    sendRequest(null);
+  }
 }
 
 /* ── THANK YOU MODAL ── */
