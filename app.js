@@ -197,8 +197,7 @@ function previewPhoto(input, previewId) {
 //  🔗 ضع هنا رابط الـ Web App بعد نشر الـ Apps Script
 //  (راجع ملف دليل_الإعداد.md لمعرفة كيفية الحصول عليه)
 // ══════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwEWA0nQIG-EkKjR3o51G1duYCf6UFPQo5_-QTrqFLVi_YAz2Jl8tDoqz6ut1NOPtd6/exec';
-
+const APPS_SCRIPT_URL = https://script.google.com/macros/s/AKfycbwEWA0nQIG-EkKjR3o51G1duYCf6UFPQo5_-QTrqFLVi_YAz2Jl8tDoqz6ut1NOPtd6/exec
 // ── تحويل صورة إلى Base64 ──
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
