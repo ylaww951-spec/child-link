@@ -1,3 +1,4 @@
+
 /* ── SECURITY: XSS sanitization ── */
 function sanitize(str) {
   if (!str) return '';
@@ -197,7 +198,7 @@ function previewPhoto(input, previewId) {
 //  🔗 ضع هنا رابط الـ Web App بعد نشر الـ Apps Script
 //  (راجع ملف دليل_الإعداد.md لمعرفة كيفية الحصول عليه)
 // ══════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby9J0C9fILAjOxa4twjkEWTh_5LdTpfEon2GQn0j6KUHHv5SgCrA4Zfnr6La-dljfh6eA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbymuL19RWnq7aqpMkUkEZFGhDmZe4gjD-4UrmFhogpVYg9X9cwL45k3a-wafvqibwpeRQ/exec';
 
 // ── تحويل صورة إلى Base64 ──
 function fileToBase64(file) {
