@@ -1,4 +1,3 @@
-
 /* ── SECURITY: XSS sanitization ── */
 function sanitize(str) {
   if (!str) return '';
