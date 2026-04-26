@@ -2288,14 +2288,15 @@ function submitForm(e, type) {
 
   // تحويل الصورة لـ base64 وإرسالها
   const sendRequest = (imageBase64) => {
-    if (imageBase64) params.set('imageBase64', imageBase64);
-    fetch(APPS_SCRIPT_URL + '?' + params.toString())
-    .then(r => r.json())
-    .then(data => {
+    const payload = {};
+    for (const [k, v] of params.entries()) payload[k] = v;
+    if (imageBase64) payload.imageBase64 = imageBase64;
+
+    const onSuccess = (data) => {
       if (btn) { btn.innerHTML = origText; btn.disabled = false; }
       if (type === 'missing') {
         missingChildren.unshift({
-          id: data.id || Date.now(), name: params.get('name'), age: params.get('age'),
+          id: (data && data.id) || Date.now(), name: params.get('name'), age: params.get('age'),
           phone: params.get('phone'), guardian: params.get('guardian'),
           area: params.get('area'), region: params.get('region'),
           date: new Date().toLocaleDateString('ar-EG'),
@@ -2304,7 +2305,7 @@ function submitForm(e, type) {
         renderMissingList('all');
       } else {
         foundChildren.unshift({
-          id: data.id || Date.now(), name: params.get('name'), age: params.get('age'),
+          id: (data && data.id) || Date.now(), name: params.get('name'), age: params.get('age'),
           phone: params.get('phone'), area: params.get('area'),
           region: params.get('region'),
           date: new Date().toLocaleDateString('ar-EG'),
@@ -2316,17 +2317,49 @@ function submitForm(e, type) {
       form.reset();
       clearPreviews();
       setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
-    })
-    .catch(() => {
+    };
+
+    const onError = () => {
       if (btn) { btn.innerHTML = origText; btn.disabled = false; }
-      showToast('❌ حدث خطأ في الإرسال');
+      showToast('❌ حدث خطأ في الإرسال، حاول تاني');
       setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
+    };
+
+    // POST بـ text/plain عشان Google Apps Script يقبله ويتجنب CORS preflight
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => { onSuccess(data); })
+    .catch(() => {
+      // fallback: GET بدون صورة لو POST فشل
+      const fallback = Object.assign({}, payload);
+      delete fallback.imageBase64;
+      fetch(APPS_SCRIPT_URL + '?' + new URLSearchParams(fallback).toString())
+        .then(r => r.json())
+        .then(data => { onSuccess(data); })
+        .catch(onError);
     });
   };
 
   if (imgFile && imgFile.files[0]) {
     const reader = new FileReader();
-    reader.onload = e => sendRequest(e.target.result);
+    reader.onload = e => {
+      // ضغط الصورة قبل الإرسال
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > 600) { h = Math.round(h * 600 / w); w = 600; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        sendRequest(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = () => sendRequest(e.target.result);
+      img.src = e.target.result;
+    };
     reader.readAsDataURL(imgFile.files[0]);
   } else {
     sendRequest(null);
