@@ -1,3 +1,4 @@
+
 /* ── SECURITY: XSS sanitization ── */
 function sanitize(str) {
   if (!str) return '';
@@ -197,7 +198,8 @@ function previewPhoto(input, previewId) {
 //  🔗 ضع هنا رابط الـ Web App بعد نشر الـ Apps Script
 //  (راجع ملف دليل_الإعداد.md لمعرفة كيفية الحصول عليه)
 // ══════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = https://script.google.com/macros/s/AKfycbwEWA0nQIG-EkKjR3o51G1duYCf6UFPQo5_-QTrqFLVi_YAz2Jl8tDoqz6ut1NOPtd6/exec
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdHF8TUJgU97rLtuMJyJb8q7H-BRtELL5gEHvvHmixpSDvG7EYCOFirt5dlPEN2zmSGg/exec';
+
 // ── تحويل صورة إلى Base64 ──
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -208,84 +210,61 @@ function fileToBase64(file) {
   });
 }
 
-// ── JSONP helper لحل مشكلة CORS مع Google Apps Script ──
-function fetchViaJsonp(url) {
-  return new Promise((resolve, reject) => {
-    const cbName = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    const script = document.createElement('script');
-    const timer  = setTimeout(() => {
-      cleanup();
-      reject(new Error('timeout'));
-    }, 10000);
-
-    window[cbName] = (data) => {
-      cleanup();
-      resolve(data);
-    };
-
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-
-    script.onerror = () => { cleanup(); reject(new Error('script error')); };
-    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
-    document.head.appendChild(script);
-  });
-}
-
 // ── جلب البلاغات من Google Sheets عند فتح الموقع ──
 async function loadReports() {
   try {
-    // نجرب fetch العادي الأول
-    const tryFetch = async (action) => {
-      try {
-        const res = await fetch(APPS_SCRIPT_URL + '?action=' + action, {
-          mode: 'cors',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        if (res.ok) return await res.json();
-      } catch(e) {
-        // لو fetch فشل بسبب CORS → نجرب JSONP
-        try {
-          return await fetchViaJsonp(APPS_SCRIPT_URL + '?action=' + action);
-        } catch(e2) {
-          console.log('تعذر جلب ' + action + ':', e2.message);
-          return null;
-        }
-      }
-    };
-
-    const [misData, foData] = await Promise.all([
-      tryFetch('missing'),
-      tryFetch('found')
+    const [misRes, foRes] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?action=missing'),
+      fetch(APPS_SCRIPT_URL + '?action=found')
     ]);
-
-    if (misData && misData.success && misData.data && misData.data.length) {
-      missingChildren.length = 0;
-      misData.data.forEach(r => missingChildren.push({
-        id: r.id, name: r.name, age: r.age, phone: r.phone,
-        guardian: r.guardian || '—', area: r.area, region: r.region,
-        date: r.created_at, desc: r.description,
-        img: r.image_path || ''
-      }));
-      renderMissingList('all');
+    if (misRes.ok) {
+      const data = await misRes.json();
+      if (data.success && data.data && data.data.length) {
+        missingChildren.length = 0;
+        data.data.forEach(r => missingChildren.push({
+          id: r.id, name: r.name, age: r.age, phone: r.phone,
+          guardian: r.guardian || '—', area: r.area, region: r.region,
+          date: r.created_at, desc: r.description,
+          img: r.image_path || ''
+        }));
+        renderMissingList('all');
+      }
     }
-
-    if (foData && foData.success && foData.data && foData.data.length) {
-      foundChildren.length = 0;
-      foData.data.forEach(r => foundChildren.push({
-        id: r.id, name: r.name, age: r.age, phone: r.phone,
-        area: r.area, region: r.region,
-        date: r.created_at, desc: r.description,
-        img: r.image_path || ''
-      }));
-      renderFoundList('all');
+    if (foRes.ok) {
+      const data = await foRes.json();
+      if (data.success && data.data && data.data.length) {
+        foundChildren.length = 0;
+        data.data.forEach(r => foundChildren.push({
+          id: r.id, name: r.name, age: r.age, phone: r.phone,
+          area: r.area, region: r.region,
+          date: r.created_at, desc: r.description,
+          img: r.image_path || ''
+        }));
+        renderFoundList('all');
+      }
     }
   } catch(e) {
     console.log('تعذر الاتصال بـ Google Sheets:', e);
   }
+}
+
+/* ── ضغط الصورة قبل الإرسال لتصغير الـ base64 ── */
+function compressImage(base64, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = base64;
+    } catch(e) { reject(e); }
+  });
 }
 
 function submitForm(e, type) {
@@ -333,24 +312,71 @@ function submitForm(e, type) {
     const localId = Date.now();
     const imgSrc  = imgFile ? URL.createObjectURL(imgFile) : '';
 
-    // إرسال عبر GET — الطريقة الوحيدة التي تعمل مع Apps Script بدون مشاكل
-    const params = new URLSearchParams();
-    params.set('action', 'save');
-    params.set('type',        payload.type        || '');
-    params.set('name',        payload.name        || '');
-    params.set('age',         payload.age         || '');
-    params.set('gender',      payload.gender      || '');
-    params.set('phone',       payload.phone       || '');
-    params.set('area',        payload.area        || '');
-    params.set('region',      payload.region      || '');
-    params.set('guardian',    payload.guardian    || '');
-    params.set('description', payload.description || '');
-    params.set('lost_at',     payload.lost_at     || '');
-    params.set('found_at',    payload.found_at    || '');
-    fetch(APPS_SCRIPT_URL + '?' + params.toString(), { mode: 'cors' })
+    // إرسال البيانات — نستخدم POST عشان يتحمل الصور الكبيرة
+    const sendToSheet = (imageUrl) => {
+      const payload_data = {
+        action:         'save',
+        type:           payload.type        || '',
+        name:           payload.name        || '',
+        age:            payload.age         || '',
+        gender:         payload.gender      || '',
+        skin:           payload.skin        || '',
+        phone:          payload.phone       || '',
+        email:          payload.email       || '',
+        area:           payload.area        || '',
+        region:         payload.region      || '',
+        guardian:       payload.guardian    || '',
+        description:    payload.description || '',
+        lost_at:        payload.lost_at     || '',
+        found_at:       payload.found_at    || '',
+        found_location: payload.found_location || '',
+        health:         payload.health      || '',
+        child_with:     payload.child_with  || '',
+        reporter:       payload.reporter    || '',
+        last_seen:      payload.last_seen   || '',
+      };
+      if (imageUrl) payload_data.imageBase64 = imageUrl;
+
+      // إرسال عبر POST بدون no-cors عشان نقدر نقرأ الرد ونتأكد وصول الصورة
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload_data)
+      })
       .then(r => r.json())
-      .then(d => console.log('Saved:', d))
-      .catch(() => { fetch(APPS_SCRIPT_URL + '?' + params.toString(), { mode: 'no-cors' }).catch(e => console.log('no-cors err:', e)); });
+      .then(d => {
+        if (d.success) {
+          console.log('Saved via POST ✅, image:', d.image_path);
+        } else {
+          console.warn('POST رد بخطأ:', d.error);
+          // fallback: GET بدون صورة
+          const fallback = Object.assign({}, payload_data);
+          delete fallback.imageBase64;
+          fetch(APPS_SCRIPT_URL + '?' + new URLSearchParams(fallback).toString())
+            .then(r2 => r2.json())
+            .then(d2 => console.log('Saved via GET fallback:', d2))
+            .catch(e => console.log('Save error:', e));
+        }
+      })
+      .catch(() => {
+        // fallback: GET بدون صورة لو POST فشل كلياً
+        const fallback = Object.assign({}, payload_data);
+        delete fallback.imageBase64;
+        fetch(APPS_SCRIPT_URL + '?' + new URLSearchParams(fallback).toString())
+          .then(r => r.json())
+          .then(d => console.log('Saved via GET fallback:', d))
+          .catch(e => console.log('Save error:', e));
+      });
+    };
+
+    // لو في صورة، نضغطها الأول لتصغير الـ base64
+    if (payload.imageBase64) {
+      compressImage(payload.imageBase64, 600, 0.7)
+        .then(compressed => sendToSheet(compressed))
+        .catch(() => sendToSheet(payload.imageBase64));
+    } else {
+      sendToSheet('');
+    }
 
     // اعرض النتيجة فوراً
     if (btn) { btn.innerHTML = origText; btn.disabled = false; }
@@ -377,6 +403,8 @@ function submitForm(e, type) {
     form.reset();
     clearPreviews();
     setTimeout(() => showPage(type === 'missing' ? 'missing-list' : 'found-list'), 3200);
+  }; // نهاية doSubmit
+
   if (imgFile) {
     fileToBase64(imgFile).then(b64 => doSubmit(makePayload(b64)));
   } else {
